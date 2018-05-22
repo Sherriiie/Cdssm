@@ -41,6 +41,61 @@ class ChineseCdssmModel:
         normalized_vec = self.dense_layer(maxpooling, model_prefix)
         return normalized_vec
 
+    def classification(self, qnvec, dnvec):
+        """
+        based on the embedding of query and document, implement binary classification
+        input: q- batch_size*128
+               d- batch_size*128
+        output: batch_size*1, binary
+        """
+        print(tf.shape(qnvec), tf.shape(dnvec))
+        feature_in = tf.concat([qnvec, dnvec], 1)
+        print(tf.shape(feature_in))
+        feature_in = tf.expand_dims(feature_in, 2)
+        feature_in = tf.expand_dims(feature_in, 3)
+
+
+        cnn_conv_size = 256
+        kernel_width = 3
+        num_class = 2
+        padding_margin = int(kernel_width / 2)
+        padding = tf.constant([[0, 0], [padding_margin, padding_margin], [0, 0]])
+        text_embedding = tf.pad(feature_in, padding)
+        text_embedding = tf.expand_dims(text_embedding, -1)
+
+
+        random_range = math.sqrt(6.0 / ( tf.shape(feature_in)[1]+ cnn_conv_size))
+        with tf.variable_scope("conv_maxpooling_layer", reuse=tf.AUTO_REUSE):
+            weight = tf.get_variable(name='conv_weight',
+                                     shape=[kernel_width, 1, 1, cnn_conv_size],
+                                     initializer=tf.random_uniform_initializer(-random_range, random_range))
+            bias = tf.get_variable(name='conv_bias',
+                                   shape=[cnn_conv_size],
+                                   initializer=tf.constant_initializer(0.1))
+
+        conv = tf.nn.conv2d(text_embedding, weight, strides=[1, 1, 1, 1], padding="VALID")
+        nonlinear = tf.nn.tanh(tf.nn.bias_add(conv, bias))
+        maxpooling = tf.reduce_max(nonlinear, axis=1)
+        maxpooling = tf.reshape(maxpooling, [-1, cnn_conv_size])
+
+        # random_range = math.sqrt(6.0 / (cnn_conv_size + num_class))
+        with tf.variable_scope("dense_layer", reuse=tf.AUTO_REUSE):
+            weight = tf.get_variable(name='dense_weight',
+                                     shape=[cnn_conv_size, num_class],
+                                     initializer=tf.random_uniform_initializer(-1, 1))
+            bias = tf.get_variable(name='dense_bias',
+                                   shape=[num_class],
+                                   initializer=tf.constant_initializer(0.1))
+        matmul = tf.matmul(maxpooling, weight)
+        score = tf.nn.bias_add(matmul, bias)
+        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label, logits=score)
+        loss = tf.reduce_sum(losses)
+        label = read_labels(batch_size)
+
+    def read_labels(batch_size):
+        with open('labels', 'r') as file:
+            lines = file.readlines()
+
     def embedding_layer(self, text_vec, text_vec_length, model_prefix='q'):
         """
         dense embedding layer
