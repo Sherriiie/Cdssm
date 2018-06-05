@@ -32,6 +32,42 @@ class ChineseCdssmModel:
             dnvec = self.forward_propagation(doc_vec, doc_vec_length, 'd')
         return qnvec, dnvec
 
+    def binary(self, text_embedding):
+        num_class = 2
+        with tf.variable_scope("conv_maxpooling_layer_binary", reuse=tf.AUTO_REUSE):
+            # weight = tf.get_variable(name='conv_weight',
+            #                          shape=[kernel_width, 1, 1, cnn_conv_size],
+            #                          initializer=tf.random_uniform_initializer(-random_range, random_range))
+            weight = tf.get_variable(name='conv_weight',
+                                     shape=[1, self.win_size, 1, self.conv_size],
+                                     initializer=tf.random_uniform_initializer(-1.0, 1.0))
+            # filter_shape = [kernel_width, 1, 1, cnn_conv_size]
+            # weight  = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1))
+            bias = tf.get_variable(name='conv_bias',
+                                   shape=[self.conv_size],
+                                   initializer=tf.constant_initializer(0.1))
+
+        conv = tf.nn.conv2d(text_embedding, weight, strides=[1, 1, 1, 1], padding="SAME")       # text_embedding=(B, 1, 256, 1)
+        print('==== classification(), conv: ', conv.get_shape())
+        nonlinear = tf.nn.tanh(tf.nn.bias_add(conv, bias))
+        maxpooling = tf.reduce_max(nonlinear, axis=2)
+        maxpooling = tf.reshape(maxpooling, [-1, self.conv_size])
+        print('==== classification(), maxpooling: ', maxpooling.get_shape())
+
+        # add an output layer for 2 classes
+        # random_range = math.sqrt(6.0 / (cnn_conv_size + num_class))
+        with tf.variable_scope("dense_layer", reuse=tf.AUTO_REUSE):
+            weight = tf.get_variable(name='dense_weight',
+                                     shape=[self.conv_size, num_class],
+                                     initializer=tf.random_uniform_initializer(-1, 1))
+            bias = tf.get_variable(name='dense_bias',
+                                   shape=[num_class],
+                                   initializer=tf.constant_initializer(0.1))
+
+        matmul = tf.matmul(maxpooling, weight)
+        logits = tf.nn.bias_add(matmul, bias)
+        return logits
+
     def forward_propagation(self, text_vec, text_vec_length, model_prefix='q'):
         """
         forward propagation process

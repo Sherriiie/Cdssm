@@ -43,8 +43,8 @@ class ModelPredictor:
         ckpt = tf.train.get_checkpoint_state(FLAGS.input_previous_model_path)
         if ckpt and ckpt.model_checkpoint_path:
             # saver.restore(session, ckpt.model_checkpoint_path)
-            saver.restore(session, 'data/finalmodel.ckpt/cdssm_model-114000')
-            print("Load model from ", 'D:/code/CMCC/ChineseCdssmCmcc/data/finalmodel.ckpt')
+            saver.restore(session, 'data/finalmodel.ckpt/cdssm_model-11000')
+            print("Load model from ", ckpt.model_checkpoint_path)
         else:
             raise Exception("No model found in {}".format(ckpt.model_checkpoint_path))
 

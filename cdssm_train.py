@@ -160,6 +160,7 @@ class ModelTrainer:
                                                            self.max_length,
                                                            self.num_threads)
         train_q_vec, train_q_vec_len, train_d_vec, train_d_vec_len = train_data
+        print('train_q_vec, train_d_vec', train_q_vec.get_shape(), train_d_vec.get_shape(),train_q_vec_len.get_shape(), train_d_vec_len.get_shape())
         train_qnvec, train_dnvec = self.model.inference(train_q_vec, train_q_vec_len, train_d_vec, train_d_vec_len)
         train_loss = self.calc_loss(train_qnvec, train_dnvec)
         avg_train_loss = self.update_loss(train_loss, tf.shape(train_qnvec)[0])
@@ -215,6 +216,7 @@ class ModelTrainer:
 
                     # one step training
                     _, loss, avg_loss, weight, step, summary = session.run([train_op, train_loss, avg_train_loss, self.total_weight, inc_step, summary_op])
+                    _train_q_vec, _train_q_vec_len, _train_d_vec, _train_d_vec_len = session.run([train_q_vec,train_q_vec_len, train_d_vec, train_d_vec_len])
 
                     # log performance
                     if step % self.log_frequency == 0:
